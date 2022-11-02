@@ -1,0 +1,93 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'idea'
+    id 'org.jetbrains.intellij' version '1.7.0'
+    id 'com.dorongold.task-tree' version '2.1.0'
+    id 'org.infernus.idea.checkstyle.build'
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//   Project Metadata
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+version = '5.72.0'
+
+intellij {
+    version = 'IC-2021.3.3'
+    pluginName = 'CheckStyle-IDEA'
+    updateSinceUntilBuild = false
+    instrumentCode = false
+    plugins = ['java']
+}
+
+publishPlugin {
+    token = System.getenv("JETBRAINS_PLUGIN_REPO_TOKEN")
+}
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//   Compilation
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:deprecation'
+    options.release = 11
+
+    if (it.name == 'compileCsaccessJava' || it.name == 'compileCsaccessTestJava') {
+        options.compilerArgs << '-Xlint:unchecked'
+    }
+}
+
+test {
+    forkEvery = 1
+}
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//   Dependencies
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+dependencies {
+    implementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
+    implementation group: 'commons-codec', name: 'commons-codec', version: '1.15'
+
+    csaccessCompileOnly ("com.puppycrawl.tools:checkstyle:${supportedCsVersions.getBaseVersion()}") {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+
+    testImplementation group: 'junit', name: 'junit', version: '4.13.2'
+    testImplementation group: 'org.hamcrest', name: 'hamcrest', version: '2.2'
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: '4.6.1'
+}
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//   IntelliJ IDEA Config
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+idea.module {
+    downloadJavadoc = true
+    downloadSources = true
+    excludeDirs += file('.idea')
+    excludeDirs += file('_support')
+
+    // TODO We should also tell IntelliJ automatically that csaccessTest contains test code.
+    // The following lines should really do it, but currently don't, which seems like a Gradle bug to me:
+    //def SourceSet catSourceSet = sourceSets.getByName(CustomSourceSetCreator.CSACCESSTEST_SOURCESET_NAME);
+    //testSourceDirs += catSourceSet.getJava().getSrcDirs();
+    //testSourceDirs += catSourceSet.getResources().getSrcDirs();
+    //scopes.TEST.plus += [configurations.getByName(catSourceSet.getRuntimeConfigurationName())];
+}
